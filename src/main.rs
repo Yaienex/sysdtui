@@ -1,127 +1,24 @@
 mod matching_list;
 mod misc;
 mod draw;
+mod app;
 
-use draw::*;
+mod view;
+
+use view::{menu::*,service::*,Screen};
+use app::App;
 use std::io;
-use std::io::stdout;
-use std::process::{exit, Command};
-use std::thread::sleep;
-use std::time::Duration;
+use std::io::{stdout, Write};
+use std::process::{exit, Command, Stdio};
+use std::time::{Duration, Instant};
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use crossterm::terminal::{Clear, ClearType};
+
 use ratatui::{backend::CrosstermBackend, Terminal};
-use ratatui::widgets::ListState;
-
-#[derive(Debug, Clone, Copy,PartialEq)]
-enum Screen {
-    Menu,
-    CreateMenu, // create a service
-    ModifyMenu,
-    ModifyService, // enable / disable + writing
-    RunTimeMenu,
-    RunTimeService,// start / stop / restart
-    StatusMenu,
-    StatusService, // status
-    ExitMenu
-}
-
-struct App {
-    items: Vec<String>,
-    selected: usize,
-    screen: Screen,
-    prev_screen: Screen,
-    close: bool,
-    state: ListState,
-    cursor_pos: usize,
-    input: String,
-    current_service: String,
-}
-
-impl App {
-    fn new(items: Vec<String>) -> Self {
-        let mut state = ListState::default();
-        state.select(Some(0));
-        App {
-            items,
-            selected: 0,
-            screen: Screen::Menu,
-            prev_screen: Screen::Menu,
-            close: false,
-            state,
-            cursor_pos: 0,
-            input :"".to_string(),
-            current_service: "".to_string(),
-        }
-
-    }
-
-    fn next(&mut self) {
-        let i = match self.state.selected() {
-            Some(i) => {
-                if i >= self.items.len() - 1 { 0 } else { i + 1 }
-            }
-            None => 0,
-        };
-        self.state.select(Some(i));
-        self.selected = i;
-    }
-
-    fn previous(&mut self) {
-        let i = match self.state.selected() {
-            Some(i) => {
-                if i == 0 { self.items.len() - 1 } else { i - 1 }
-            }
-            None => 0,
-        };
-        self.state.select(Some(i));
-        self.selected = i;
-    }
-
-
-    fn insert_char(&mut self, c: char) {
-        self.input.insert(self.cursor_pos, c);
-        self.cursor_pos += 1;
-    }
-
-    fn backspace(&mut self) {
-        if self.cursor_pos > 0 {
-            self.cursor_pos -= 1;
-            self.input.remove(self.cursor_pos);
-        }
-    }
-
-    fn move_left(&mut self) {
-        if self.cursor_pos > 0 {
-            self.cursor_pos -= 1;
-        }
-    }
-
-    fn move_right(&mut self) {
-        if self.cursor_pos < self.input.len() {
-            self.cursor_pos += 1;
-        }
-    }
-
-    fn quit(&mut self) {
-        sleep(Duration::from_secs(2));
-        execute!(stdout(), Clear(ClearType::All)).unwrap();
-        exit(0);
-    }
-
-    fn change_items(&mut self, items: Vec<String>) {
-        self.items = items;
-        if self.prev_screen != self.screen{
-            self.selected =0;
-            self.prev_screen = self.screen;
-        }
-    }
-
-}
+use crate::matching_list::create_menu_match;
 
 fn main() -> Result<(), io::Error> {
     enable_raw_mode()?;
@@ -153,38 +50,49 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>)  {
     let runtime_items = get_lists("runtime");
     loop {
         terminal.draw(|f| {
-            match app.screen {
-                Screen::Menu =>{ app.change_items(main_menu_items.to_owned());
-                    draw_menu(f, &mut app)
-                },
-                Screen::CreateMenu => {
-                    app.change_items(create_items.to_owned());
-                    draw_create_menu(f, &mut app);
-                },
-                Screen::ModifyMenu => {
-                    app.change_items(services_items.to_owned());
-                    draw_modify_menu(f, &mut app);
-                },
-                Screen::ModifyService => {
-                    app.change_items(modify_items.to_owned());
-                    draw_modify_service(f, &mut app);
-                },
-                Screen::RunTimeMenu => {
-                    app.change_items(services_items.to_owned());
-                    draw_runtime_menu(f, &mut app);
-                },
-                Screen::RunTimeService => {
-                    app.change_items(runtime_items.to_owned());
-                    draw_runtime_service(f, &mut app);
-                },
-                Screen::StatusMenu => {
-                    app.change_items(services_items.to_owned());
-                    draw_status_menu(f, &mut app);
-                },
-                Screen::StatusService => {
-                    app.change_items(status_items.to_owned());
-                    draw_status_service(f, &mut app); },
-                Screen::ExitMenu => draw_exit_menu(f, &mut app),
+            if app.show_sudo_modal {
+                //mdp(f,&mut app);
+            } else if app.popup{
+                //popup(f,&mut app);
+
+            }
+            else {
+                match app.screen {
+                    Screen::Menu =>{ app.change_items(main_menu_items.to_owned());
+                        main_menu::draw_menu(f, &mut app)
+                    },
+                    Screen::CreateMenu => {
+                        app.change_items(create_items.to_owned());
+                        create_menu::draw_create_menu(f, &mut app);
+                    },
+                    Screen::ModifyMenu => {
+                        app.change_items(services_items.to_owned());
+                        modify_menu::draw_modify_menu(f, &mut app);
+                    },
+                    Screen::ModifyService => {
+                        app.change_items(modify_items.to_owned());
+                        modify_service::draw_modify_service(f, &mut app);
+                    },
+                    Screen::RunTimeMenu => {
+                        app.change_items(services_items.to_owned());
+                        runtime_menu::draw_runtime_menu(f, &mut app);
+                    },
+                    Screen::RunTimeService => {
+                        app.change_items(runtime_items.to_owned());
+                        runtime_service::draw_runtime_service(f, &mut app);
+                    },
+                    Screen::StatusMenu => {
+                        app.change_items(services_items.to_owned());
+                        status_menu::draw_status_menu(f, &mut app);
+                    },
+                    Screen::StatusService => {
+                        app.change_items(status_items.to_owned());
+                        status_service::draw_status_service(f, &mut app);
+                    },
+                    Screen::SudoMenu => sudo_menu::draw_sudo_menu(f, &mut app),
+                    Screen::ExitMenu => exit_menu::draw_exit_menu(f, &mut app),
+
+                }
             }
         }).unwrap();
 
@@ -196,13 +104,22 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>)  {
                     Screen::ModifyMenu=> matching_list::modify_menu_match(key.code,&mut app),
                     Screen::ModifyService => matching_list::modify_service_match(key.code,&mut app),
                     Screen::RunTimeMenu => matching_list::runtime_menu_match(key.code,&mut app),
+                    Screen::RunTimeService => matching_list::runtime_service_match(key.code,&mut app),
                     Screen::StatusMenu =>matching_list::status_menu_match(key.code,&mut app),
+                    Screen::StatusService =>matching_list::status_service_match(key.code,&mut app),
                     _ => {}
                 }
             }
         }
         if app.close {
             app.quit()
+        }
+        if let Some(close_time) = app.popup_close_time {
+            if Instant::now() >= close_time {
+                app.show_sudo_modal = false;
+                app.popup = false;
+                app.popup_close_time = None;
+            }
         }
     }
 }
@@ -245,7 +162,12 @@ fn get_lists(list: &str) -> Vec<String> {
             vec!["Return".to_string(), "Exit".to_string()]
         },
         "runtime" => {
-            vec!["Return".to_string(), "Exit".to_string()]
+            vec!["Start".to_string(),
+                 "Stop".to_string(),
+                 "Enable".to_string(),
+                 "Disable".to_string(),
+                 "Return".to_string(),
+                 "Exit".to_string()]
         },
 
         _ => vec!["".to_string()],
