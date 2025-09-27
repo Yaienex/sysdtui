@@ -1,0 +1,1 @@
+/home/ronin/Coding/Rust/systd_daemon/target/debug/systd_daemon: /home/ronin/Coding/Rust/systd_daemon/src/draw.rs /home/ronin/Coding/Rust/systd_daemon/src/main.rs /home/ronin/Coding/Rust/systd_daemon/src/matching_list.rs /home/ronin/Coding/Rust/systd_daemon/src/misc.rs
