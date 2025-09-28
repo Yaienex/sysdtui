@@ -14,15 +14,13 @@ pub struct App {
     pub(crate) prev_screen: Screen,
     pub(crate) close: bool,
     pub(crate) state: ListState,
-    pub(crate) cursor_pos: usize,
-    pub(crate) input: String,
+
 
     pub(crate) current_action: String,
     pub(crate) current_service: String,
     // modal sudo
-    pub(crate) show_sudo_modal: bool,
     pub(crate) sudo_password: String,
-    pub(crate) message: String,
+    pub(crate) cmd_status: String,
     pub(crate) popup: bool,
 
     //Timers
@@ -41,13 +39,10 @@ impl App {
             prev_screen: Screen::Menu,
             close: false,
             state,
-            cursor_pos: 0,
-            input :"".to_string(),
             current_service: "".to_string(),
             current_action: "".to_string(),
-            show_sudo_modal: false,
             sudo_password: String::new(),
-            message: String::new(),
+            cmd_status: String::new(),
             popup: false,
             popup_close_time : Some(Instant::now() + Duration::from_secs(3)),
 
@@ -78,31 +73,6 @@ impl App {
         self.selected = i;
     }
 
-
-    pub fn insert_char(&mut self, c: char) {
-        self.input.insert(self.cursor_pos, c);
-        self.cursor_pos += 1;
-    }
-
-    pub fn backspace(&mut self) {
-        if self.cursor_pos > 0 {
-            self.cursor_pos -= 1;
-            self.input.remove(self.cursor_pos);
-        }
-    }
-
-    pub fn move_left(&mut self) {
-        if self.cursor_pos > 0 {
-            self.cursor_pos -= 1;
-        }
-    }
-
-    pub fn move_right(&mut self) {
-        if self.cursor_pos < self.input.len() {
-            self.cursor_pos += 1;
-        }
-    }
-
     pub fn quit(&mut self) {
         sleep(Duration::from_secs(2));
         execute!(stdout(), Clear(ClearType::All)).unwrap();
@@ -116,18 +86,6 @@ impl App {
             self.selected =0;
             self.prev_screen = self.screen;
         }
-    }
-
-    pub fn open_sudo_modal(&mut self) {
-        self.show_sudo_modal = true;
-        self.sudo_password.clear();
-
-    }
-
-    pub fn close_sudo_modal(&mut self) {
-        self.show_sudo_modal = false;
-        self.sudo_password.clear();
-        self.popup = true;
     }
 
     pub fn run_sudo_command(&mut self, password: &str) -> (bool, String, String) {

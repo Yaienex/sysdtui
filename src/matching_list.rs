@@ -94,11 +94,9 @@ pub fn runtime_service_match(key_code: KeyCode,app:&mut App){
     match key_code{
         KeyCode::Enter => {
             if ! enter_navigation_actions(app){
-                if ! app.show_sudo_modal {
-                    
-                    app.current_action = app.items[app.selected].clone().to_lowercase();
-                    app.screen = Screen::SudoMenu;
-                }
+                app.current_action = app.items[app.selected].clone().to_lowercase();
+                app.screen = Screen::SudoMenu;
+
             }
 
         }
@@ -107,23 +105,17 @@ pub fn runtime_service_match(key_code: KeyCode,app:&mut App){
 }
 
 fn general_match(key_code: KeyCode,app: &mut App) {
-    if app.show_sudo_modal {
-        sudo_actions(key_code, app);
-    } else {
-        match key_code {
-            KeyCode::Char('q') => {
-                app.screen = Screen::ExitMenu;
-            },
-            KeyCode::Esc => app.screen = Screen::Menu,
-            KeyCode::Down => app.next(),
-            KeyCode::Up => app.previous(),
-            KeyCode::Backspace => app.backspace(),
-            KeyCode::Left => app.move_left(),
-            KeyCode::Right => app.move_right(),
-            _ => {}
-        }
+    match key_code {
+        KeyCode::Char('q') => {
+          app.screen = Screen::ExitMenu;
+        },
+        KeyCode::Esc => app.screen = Screen::Menu,
+        KeyCode::Down => app.next(),
+        KeyCode::Up => app.previous(),
+        _ => {}
     }
 }
+
 fn enter_navigation_actions(app: &mut App) -> bool{
     if app.selected == app.items.len() -1 {
         app.screen = Screen::ExitMenu;
@@ -140,23 +132,32 @@ fn enter_navigation_actions(app: &mut App) -> bool{
     false
 }
 
-fn sudo_actions(key_code: KeyCode,app: &mut App){
-        match key_code {
-            KeyCode::Esc => app.close_sudo_modal(),
-            KeyCode::Char(c) => app.sudo_password.push(c),
-            KeyCode::Backspace => { app.sudo_password.pop(); },
-            KeyCode::Enter => {
-                let password = app.sudo_password.clone();
-                let (success, stdout, stderr) = app.run_sudo_command(&password);
-                if success {
-                    app.message = "Command Succeeded".to_string();
-                } else {
-                    app.message = "Wrong password".to_string();
-                }
-                app.close_sudo_modal();
-                app.popup_close_time = Some(Instant::now() + Duration::from_secs(4)); // 3 secondes
+
+pub(crate) fn sudo_menu(key_code: KeyCode, app: &mut App) {
+    match key_code{
+        KeyCode::Esc => {
+            app.screen = Screen::Menu;
+        }
+        KeyCode::Enter => {
+            let password = app.sudo_password.clone();
+            app.sudo_password.clear();
+            let (success, stdout,stderr) = app.run_sudo_command(&password);
+            if success{
+                app.cmd_status = "Well done".to_string();
+                app.popup_close_time = Option::from(Instant::now() + Duration::from_secs(4));
+                app.screen = Screen::Popup;
+            } else {
+                app.cmd_status = "Try Again".to_string();
             }
-            _ => {}
+        },
+        KeyCode::Char(c) => {
+            let s = c.to_string();
+            app.sudo_password.push_str(s.as_str());
+        },
+        KeyCode::Backspace => {
+            app.sudo_password.pop();
         }
 
+        _ => {}
+    }
 }

@@ -1,6 +1,5 @@
 mod matching_list;
 mod misc;
-mod draw;
 mod app;
 
 mod view;
@@ -50,9 +49,7 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>)  {
     let runtime_items = get_lists("runtime");
     loop {
         terminal.draw(|f| {
-            if app.show_sudo_modal {
-                //mdp(f,&mut app);
-            } else if app.popup{
+             if app.popup{
                 //popup(f,&mut app);
 
             }
@@ -107,6 +104,7 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>)  {
                     Screen::RunTimeService => matching_list::runtime_service_match(key.code,&mut app),
                     Screen::StatusMenu =>matching_list::status_menu_match(key.code,&mut app),
                     Screen::StatusService =>matching_list::status_service_match(key.code,&mut app),
+                    Screen::SudoMenu => matching_list::sudo_menu(key.code,&mut app),
                     _ => {}
                 }
             }
@@ -116,7 +114,6 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>)  {
         }
         if let Some(close_time) = app.popup_close_time {
             if Instant::now() >= close_time {
-                app.show_sudo_modal = false;
                 app.popup = false;
                 app.popup_close_time = None;
             }
