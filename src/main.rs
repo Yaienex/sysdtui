@@ -7,17 +7,15 @@ mod view;
 use view::{menu::*,service::*,Screen};
 use app::App;
 use std::io;
-use std::io::{stdout, Write};
-use std::process::{exit, Command, Stdio};
+use std::process::Command;
 use std::time::{Duration, Instant};
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 
 use ratatui::{backend::CrosstermBackend, Terminal};
-use crate::matching_list::create_menu_match;
 
 fn main() -> Result<(), io::Error> {
     enable_raw_mode()?;
@@ -26,7 +24,7 @@ fn main() -> Result<(), io::Error> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let res = run_app(&mut terminal);
+    run_app(&mut terminal);
 
     disable_raw_mode()?;
     execute!(
@@ -49,12 +47,7 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>)  {
     let runtime_items = get_lists("runtime");
     loop {
         terminal.draw(|f| {
-             if app.popup{
-                //popup(f,&mut app);
-
-            }
-            else {
-                match app.screen {
+            match app.screen {
                     Screen::Menu =>{ app.change_items(main_menu_items.to_owned());
                         main_menu::draw_menu(f, &mut app)
                     },
@@ -86,26 +79,33 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>)  {
                         app.change_items(status_items.to_owned());
                         status_service::draw_status_service(f, &mut app);
                     },
-                    Screen::SudoMenu => sudo_menu::draw_sudo_menu(f, &mut app),
                     Screen::ExitMenu => exit_menu::draw_exit_menu(f, &mut app),
-
                 }
+            if app.popup{
+                popup::draw_popup(f,&mut app);
+            }
+            else if app.sudo_popup{
+                popup::draw_sudo_popup(f,&mut app);
             }
         }).unwrap();
 
+
         if event::poll(Duration::from_millis(100)).unwrap() {
             if let Event::Key(key) = event::read().unwrap() {
-                match app.screen {
-                    Screen::Menu => matching_list::menu_match(key.code,&mut app),
-                    Screen::CreateMenu => matching_list::create_menu_match(key.code,&mut app),
-                    Screen::ModifyMenu=> matching_list::modify_menu_match(key.code,&mut app),
-                    Screen::ModifyService => matching_list::modify_service_match(key.code,&mut app),
-                    Screen::RunTimeMenu => matching_list::runtime_menu_match(key.code,&mut app),
-                    Screen::RunTimeService => matching_list::runtime_service_match(key.code,&mut app),
-                    Screen::StatusMenu =>matching_list::status_menu_match(key.code,&mut app),
-                    Screen::StatusService =>matching_list::status_service_match(key.code,&mut app),
-                    Screen::SudoMenu => matching_list::sudo_menu(key.code,&mut app),
-                    _ => {}
+                if app.sudo_popup{
+                    matching_list::sudo_menu(key.code, &mut app);
+                } else {
+                    match app.screen {
+                        Screen::Menu => matching_list::menu_match(key.code, &mut app),
+                        Screen::CreateMenu => matching_list::create_menu_match(key.code, &mut app),
+                        Screen::ModifyMenu => matching_list::modify_menu_match(key.code, &mut app),
+                        Screen::ModifyService => matching_list::modify_service_match(key.code, &mut app),
+                        Screen::RunTimeMenu => matching_list::runtime_menu_match(key.code, &mut app),
+                        Screen::RunTimeService => matching_list::runtime_service_match(key.code, &mut app),
+                        Screen::StatusMenu => matching_list::status_menu_match(key.code, &mut app),
+                        Screen::StatusService => matching_list::status_service_match(key.code, &mut app),
+                        _ => {}
+                    }
                 }
             }
         }
@@ -114,8 +114,7 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>)  {
         }
         if let Some(close_time) = app.popup_close_time {
             if Instant::now() >= close_time {
-                app.popup = false;
-                app.popup_close_time = None;
+               app.close_popup();
             }
         }
     }

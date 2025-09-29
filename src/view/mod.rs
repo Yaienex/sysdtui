@@ -50,6 +50,5 @@ pub enum Screen {
     RunTimeService,// start / stop / restart
     StatusMenu,
     StatusService, // status
-    SudoMenu,
     ExitMenu
 }

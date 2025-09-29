@@ -21,8 +21,10 @@ pub struct App {
     // modal sudo
     pub(crate) sudo_password: String,
     pub(crate) cmd_status: String,
-    pub(crate) popup: bool,
 
+    //Popups
+    pub(crate) popup: bool,
+    pub(crate) sudo_popup: bool,
     //Timers
     pub(crate) popup_close_time: core::option::Option<Instant>,
 
@@ -44,6 +46,7 @@ impl App {
             sudo_password: String::new(),
             cmd_status: String::new(),
             popup: false,
+            sudo_popup: false,
             popup_close_time : Some(Instant::now() + Duration::from_secs(3)),
 
         }
@@ -123,4 +126,21 @@ impl App {
         }
     }
 
+    pub fn open_popup(&mut self){
+        self.popup_close_time = Option::from(Instant::now() + Duration::from_secs(4));
+        self.popup = true;
+    }
+
+    pub fn close_popup(&mut self){
+        self.popup = false;
+        self.popup_close_time = None;
+    }
+
+    pub fn close_sudo(&mut self){
+        self.sudo_popup = false;
+    }
+
+    pub fn open_sudo(&mut self){
+        self.sudo_popup = true;
+    }
 }

@@ -1,11 +1,12 @@
-use std::fmt::format;
-use std::time::{Duration, Instant};
 use crossterm::event::KeyCode;
 use crate::{ App, Screen};
 
 pub fn menu_match(key_code: KeyCode, app: &mut App ) {
     general_match(key_code,app);
     match key_code{
+        KeyCode::Char('p') => {
+          app.open_popup();
+        },
         KeyCode::Enter => {
             if app.selected == app.items.len() - 1 {
                 app.quit();
@@ -95,7 +96,7 @@ pub fn runtime_service_match(key_code: KeyCode,app:&mut App){
         KeyCode::Enter => {
             if ! enter_navigation_actions(app){
                 app.current_action = app.items[app.selected].clone().to_lowercase();
-                app.screen = Screen::SudoMenu;
+                app.open_sudo();
 
             }
 
@@ -136,21 +137,23 @@ fn enter_navigation_actions(app: &mut App) -> bool{
 pub(crate) fn sudo_menu(key_code: KeyCode, app: &mut App) {
     match key_code{
         KeyCode::Esc => {
-            app.screen = Screen::Menu;
+            app.close_sudo();
         }
         KeyCode::Enter => {
             let password = app.sudo_password.clone();
             app.sudo_password.clear();
-            let (success, stdout,stderr) = app.run_sudo_command(&password);
+            let (success, stdout,_stderr) = app.run_sudo_command(&password);
             if success{
                 app.cmd_status = "Well done".to_string();
-                app.popup_close_time = Option::from(Instant::now() + Duration::from_secs(4));
-                app.screen = Screen::Popup;
+                app.open_popup();
+                app.close_sudo();
+                println!("{stdout}");
             } else {
                 app.cmd_status = "Try Again".to_string();
             }
         },
         KeyCode::Char(c) => {
+            app.cmd_status.clear();
             let s = c.to_string();
             app.sudo_password.push_str(s.as_str());
         },
